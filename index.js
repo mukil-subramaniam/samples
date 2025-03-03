@@ -2,38 +2,52 @@ import express from "express";
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Render requires an open port
-const URL = "https://backend-1-08px.onrender.com"; // Replace with your actual Render backend URL
+const URL = "https://backend-1-08px.onrender.com"; // Your actual backend URL
 
-// Function to ping the backend
+// Function to ping the backend and fetch the 'message' attribute
 const pingServer = async (retries = 3) => {
     try {
         const fetch = (await import('node-fetch')).default; // Dynamic import for ESM
         const res = await fetch(URL);
-        console.log(`[${new Date().toLocaleString()}] Pinged ${URL} - Status: ${res.status}`);
+        const data = await res.json(); // Parse JSON response
 
-        if (res.status !== 200 && retries > 0) {
-            console.warn(`Retrying in 30 seconds... (${retries} retries left)`);
-            setTimeout(() => pingServer(retries - 1), 30000); // Retry after 30 sec
-        }
+        console.log(`[${new Date().toLocaleString()}] Pinged ${URL} - Message: ${data.message}`);
+        return data.message || "No message attribute found"; // Return only 'message'
+
     } catch (err) {
+        console.error(`[${new Date().toLocaleString()}] Ping failed:`, err);
+
         if (retries > 0) {
-            console.warn(`Ping failed. Retrying in 30 seconds... (${retries} retries left)`);
-            setTimeout(() => pingServer(retries - 1), 30000); // Retry after 30 sec
-        } else {
-            console.error(`[${new Date().toLocaleString()}] Ping failed:`, err);
+            console.warn(`Retrying in 30 seconds... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 sec before retrying
+            return pingServer(retries - 1); // Retry
         }
+
+        return "Ping failed after multiple retries"; // Only return 'message'
     }
 };
 
-// Ping every 14 minutes (14 * 60 * 1000 ms)
-setInterval(pingServer, 14 * 60 * 1000);
+// **Function to keep sending requests every 14 minutes**
+const startAutoPing = () => {
+    setInterval(() => {
+        pingServer().catch(err => console.error("Auto ping failed:", err));
+    }, 14 * 60 * 1000); // 14 minutes interval
+};
 
-console.log(`[${new Date().toLocaleString()}] Pinger service started...`);
+// **Start auto pinging without user interaction**
+startAutoPing();
+console.log(`[${new Date().toLocaleString()}] Auto pinger started...`);
 pingServer(); // First immediate ping
 
-// Express server to keep Render service alive
+// API route to manually trigger the ping and return JSON
+app.get("/ping", async (req, res) => {
+    const message = await pingServer();
+    res.json({ message });
+});
+
+// Root route
 app.get("/", (req, res) => {
-    res.send("Pinger service is running...");
+    res.json({ message: "Pinger service is running..." });
 });
 
 // Start the Express server
