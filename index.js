@@ -1,32 +1,37 @@
-// Import node-fetch package
+const express = require('express');
 const fetch = require('node-fetch');
 
-// URL to send the request to
+const app = express();
+const PORT = process.env.PORT || 4000; // Use the port provided by Render
+
 const url = 'https://backend-1-08px.onrender.com/';
-const PORT=4000;
+
 // Function to fetch the message
 async function fetchMessage() {
   try {
-    // Send the GET request
     const response = await fetch(url);
 
-    // Check if the response is successful
     if (!response.ok) {
       throw new Error('Network response was not ok ' + response.statusText);
     }
 
-    // Parse the JSON response
     const data = await response.json();
-
-    // Log the message attribute from the response (message is returned in JSON)
     console.log('Message:', data.message);
   } catch (error) {
     console.error('There was a problem with the fetch operation:', error);
   }
 }
 
-// Send a request every 14 minutes (14 * 60 * 1000 milliseconds)
+// Call fetchMessage every 14 minutes
 setInterval(fetchMessage, 14 * 60 * 1000);
+fetchMessage(); // Initial call
 
-// Optionally, you can make an initial request right away
-fetchMessage();
+// Dummy endpoint to keep the service running
+app.get('/', (req, res) => {
+  res.send('Fetch service is running');
+});
+
+// Start the Express server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
